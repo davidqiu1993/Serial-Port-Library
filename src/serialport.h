@@ -1,6 +1,6 @@
 ﻿/**
- * Serial port library. This library is for controlling serial 
- * port devices and communications.
+ * Serial port library.
+ * This library is for controlling serial port devices and communications.
  *
  * Author:  David Qiu
  * Email:   david@davidqiu.com
@@ -35,6 +35,13 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <termios.h>
+
+
+int spClose(int fd);
+int spWrite(int fd, void* buf, int len);
+int spRead(int fd, void* buf, int len);
+int spConfig(int fd, int baudRate, int dataBit, char checkParity, int stopBit);
+int spOpen(const char* device);
 
 
 /**
@@ -73,6 +80,9 @@ int spOpen(const char* device)
   }
   */
 
+  // Set default configurations
+  spConfig(fd, 9600, 8, 'N', 1);
+
   return fd;
 }
 
@@ -82,12 +92,13 @@ int spOpen(const char* device)
  * @param baudRate Target baud rate of the serial port. Valid 
  *                 baud rates are { 2400, 4800, 9600, 19200, 
  *                 38400, 57600, 115200 }.
- * @param dataSize Target data size of the serial port. Valid 
- *                 data sizes are { 7, 8 }.
+ * @param dataBit Target data bits length of the serial port. 
+ *                Valid data sizes are { 7, 8 }.
  * @param checkParity Target parity of the parity check. 
  *                    Valid check parities are { 'N', 'O', 
  *                    'E' }.
- * @param stopBit Target stop bit of the serial port.
+ * @param stopBit Target stop bit of the serial port. Valid 
+ *                stop bits are { 1, 2 }.
  * @return An int indicating the configuration result. 
  *         Positive number indicates success, others indicate 
  *         failure.
@@ -95,7 +106,7 @@ int spOpen(const char* device)
  * @brief
  *    Configurate an opened serial port device.
  */
-int spConfig(int fd, int baudRate, int dataSize, char checkParity, int stopBit)
+int spConfig(int fd, int baudRate, int dataBit, char checkParity, int stopBit)
 {
   struct termios originConfig;
   struct termios targetConfig;
@@ -103,7 +114,7 @@ int spConfig(int fd, int baudRate, int dataSize, char checkParity, int stopBit)
   // Read the original terminal configurations and check if failed
   if (tcgetattr(fd, &originConfig) != 0) // "0" indicates sucess
   {
-    printf("configSerialPort(int, int, int, char, int): Failed to read terminal description.\n");
+    printf("spConfig(int, int, int, char, int): Failed to read terminal description.\n");
     return (-1);
   }
 
@@ -159,13 +170,13 @@ int spConfig(int fd, int baudRate, int dataSize, char checkParity, int stopBit)
     // Invalid baud rate
     default:
       // Baud rate does not exist
-      printf("configSerialPort(int, int, int, char, int): Baud rate %d does not exist.\n", baudRate);
+      printf("spConfig(int, int, int, char, int): Baud rate %d does not exist.\n", baudRate);
       return (-1);
   }
 
   // Set target data size
   targetConfig.c_cflag &= (~CSIZE);
-  switch (dataSize)
+  switch (dataBit)
   {
     // Data size 7
     case 7:
@@ -179,7 +190,7 @@ int spConfig(int fd, int baudRate, int dataSize, char checkParity, int stopBit)
 
     // Invalid data size
     default:
-      printf("configSerialPort(int, int, int, char, int): Data size %d does not exist.\n", dataSize);
+      printf("spConfig(int, int, int, char, int): Data size %d does not exist.\n", dataBit);
       return (-1);
   }
 
@@ -207,7 +218,7 @@ int spConfig(int fd, int baudRate, int dataSize, char checkParity, int stopBit)
 
     // Invalid check parity
     default:
-      printf("configSerialPort(int, int, int, char, int): Check parity %c does not exist.\n", checkParity);
+      printf("spConfig(int, int, int, char, int): Check parity %c does not exist.\n", checkParity);
       return (-1);
   }
 
@@ -226,7 +237,7 @@ int spConfig(int fd, int baudRate, int dataSize, char checkParity, int stopBit)
 
     // Invalid stop bit
     default:
-      printf("configSerialPort(int, int, int, char, int): Stop bit %d does not exist.\n", stopBit);
+      printf("spConfig(int, int, int, char, int): Stop bit %d does not exist.\n", stopBit);
       return (-1);
   }
 
@@ -242,7 +253,7 @@ int spConfig(int fd, int baudRate, int dataSize, char checkParity, int stopBit)
   // Active the target configurations immediately and check the result
   if (tcsetattr(fd, TCSANOW, &targetConfig) != 0) // "0" indicates success
   {
-    printf("configSerialPort(int, int, int, char, int): Failed to configurate terminal description.\n");
+    printf("spConfig(int, int, int, char, int): Failed to configurate terminal description.\n");
     return (-1);
   }
 
